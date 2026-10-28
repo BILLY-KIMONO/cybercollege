@@ -20,3 +20,9 @@ The local development setup uses SQLite and Django's session authentication. Set
 Learners can browse courses, enroll, complete lessons, and track their progress and badges on the dashboard. Course content and lesson challenges are managed in Django Admin. Lab activities are fixed, server-graded scenarios: they do not execute commands, connect to external systems, or run exploit code.
 
 The frontend uses Django templates and responsive CSS so the project runs without a JavaScript build toolchain. React, a separate REST API, and cloud deployment are not part of this MVP.
+
+## Diploma-style curriculum
+
+Run `python manage.py seed_demo` to add or refresh the four foundation courses and a 24-module learning pathway arranged across four semesters. The pathway covers security fundamentals and professional practice; systems, networks, programming, governance, cryptography, and identity; security operations, incident response, digital forensics, secure development, application security, and cloud; and threat intelligence, authorized assessment, audit, resilience, emerging technologies, and a supervised capstone. Each diploma-style module includes eight five-hour guided lessons, for 40 planned learning hours: seven articles and a fixed, defensive scenario. Every lesson includes learning outcomes, lesson notes, guided and independent activities, a knowledge check, assessment guidance, and an explicit time allocation. The work is a structured study plan, not a promise of 40 hours of instructor contact or an accredited qualification.
+
+This learning pathway is an educational outline, not an accredited Kenyan diploma, a qualification, or a substitute for review against the current requirements of an authorized examining body. It does not teach or authorize testing of real third-party systems.

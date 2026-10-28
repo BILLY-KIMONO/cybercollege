@@ -1,3 +1,6 @@
+from io import StringIO
+
+from django.core.management import call_command
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -105,3 +108,92 @@ class LearningFlowTests(TestCase):
         response = self.client.get(empty_course.get_absolute_url())
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Lessons coming soon")
+
+
+class DiplomaCurriculumTests(TestCase):
+    def test_seed_demo_creates_all_modules_and_is_repeatable(self):
+        call_command("seed_demo", stdout=StringIO())
+        call_command("seed_demo", stdout=StringIO())
+
+        modules = Course.objects.filter(semester__isnull=False).order_by(
+            "semester", "module_code"
+        )
+        self.assertEqual(modules.count(), 24)
+        self.assertEqual(set(modules.values_list("semester", flat=True)), {1, 2, 3, 4})
+        self.assertEqual(
+            set(modules.values_list("module_code", flat=True)),
+            {f"CYB-{semester}{module:02d}" for semester in range(1, 5) for module in range(1, 7)},
+        )
+        self.assertEqual(Lesson.objects.filter(course__semester__isnull=False).count(), 192)
+        for module in modules:
+            lessons = module.lessons.all()
+            self.assertEqual(module.duration, "40 hours", module.module_code)
+            self.assertEqual(lessons.count(), 8, module.module_code)
+            self.assertEqual(
+                lessons.filter(lesson_type=Lesson.LAB).count(), 1, module.module_code
+            )
+            self.assertEqual(
+                lessons.filter(lesson_type=Lesson.ARTICLE).count(), 7, module.module_code
+            )
+            total_hours = sum(
+                int(lesson.duration.split()[0]) for lesson in lessons
+            )
+            self.assertEqual(total_hours, 40, module.module_code)
+            lab = lessons.get(lesson_type=Lesson.LAB)
+            self.assertTrue(lab.challenge_prompt, module.module_code)
+            self.assertTrue(lab.expected_answer, module.module_code)
+            self.assertLessEqual(len(lab.expected_answer), 160, module.module_code)
+            self.assertNotIn(lab.expected_answer, lab.content, module.module_code)
+            for lesson in lessons:
+                self.assertGreaterEqual(
+                    len(lesson.content.split()),
+                    250,
+                    f"{module.module_code}: {lesson.title}",
+                )
+                self.assertEqual(lesson.duration, "5 hours", module.module_code)
+                for section in (
+                    "LEARNING OUTCOMES",
+                    "CORE LESSON NOTES",
+                    "GUIDED PRACTICE",
+                    "INDEPENDENT STUDY",
+                    "KNOWLEDGE CHECK",
+                    "ASSESSMENT AND REVIEW",
+                    "Total: 300 minutes (5 hours).",
+                ):
+                    self.assertIn(
+                        section, lesson.content, f"{module.module_code}: {lesson.title}"
+                    )
+
+    def test_catalog_lists_and_filters_diploma_modules(self):
+        call_command("seed_demo", stdout=StringIO())
+
+        response = self.client.get(reverse("catalog"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "24")
+        self.assertContains(response, "four-semester")
+        self.assertContains(response, "CYB-101")
+        self.assertContains(response, "CYB-406")
+
+        semester = self.client.get(reverse("catalog"), {"semester": "3"})
+        self.assertEqual(semester.status_code, 200)
+        self.assertContains(semester, "CYB-301")
+        self.assertContains(semester, "CYB-306")
+        self.assertNotContains(semester, "CYB-201")
+
+        module = self.client.get(reverse("catalog"), {"q": "CYB-105"})
+        self.assertContains(module, "Programming and Data Foundations for Cybersecurity")
+        self.assertNotContains(module, "CYB-106")
+
+    def test_diploma_module_detail_lists_lessons_and_safety_note(self):
+        call_command("seed_demo", stdout=StringIO())
+        module = Course.objects.get(module_code="CYB-402")
+
+        response = self.client.get(module.get_absolute_url())
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CYB-402")
+        self.assertContains(response, "SEMESTER 4")
+        self.assertContains(response, "Rules of engagement and safety")
+        self.assertContains(response, "8 guided lessons")
+        self.assertContains(response, "5 hours")
+        self.assertEqual(len(response.context["course"].lessons.all()), 8)

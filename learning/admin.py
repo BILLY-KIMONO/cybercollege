@@ -11,9 +11,16 @@ class LessonInline(admin.TabularInline):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ("title", "category", "level", "published", "featured")
-    list_filter = ("published", "featured", "level", "category")
-    search_fields = ("title", "summary")
+    list_display = (
+        "module_code",
+        "title",
+        "semester",
+        "category",
+        "level",
+        "published",
+    )
+    list_filter = ("semester", "published", "featured", "level", "category")
+    search_fields = ("module_code", "title", "summary")
     prepopulated_fields = {"slug": ("title",)}
     inlines = [LessonInline]
 

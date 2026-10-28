@@ -4,8 +4,19 @@ from django.urls import reverse
 
 
 class Course(models.Model):
+    SEMESTER_CHOICES = [
+        (1, "Semester 1"),
+        (2, "Semester 2"),
+        (3, "Semester 3"),
+        (4, "Semester 4"),
+    ]
+
     title = models.CharField(max_length=120)
     slug = models.SlugField(unique=True)
+    module_code = models.CharField(max_length=12, blank=True)
+    semester = models.PositiveSmallIntegerField(
+        choices=SEMESTER_CHOICES, blank=True, null=True
+    )
     category = models.CharField(max_length=60)
     summary = models.CharField(max_length=240)
     description = models.TextField()

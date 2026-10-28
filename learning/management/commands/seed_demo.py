@@ -1,9 +1,11 @@
 from django.core.management.base import BaseCommand
 
+from learning.curriculum import DIPLOMA_MODULES, build_diploma_lesson
+from learning.curriculum_extensions import SUPPLEMENTAL_LESSONS
 from learning.models import Course, Lesson
 
 
-COURSES = [
+FOUNDATION_COURSES = [
     {
         "title": "Cybersecurity Foundations",
         "slug": "cybersecurity-foundations",
@@ -72,27 +74,56 @@ COURSES = [
 
 
 class Command(BaseCommand):
-    help = "Create sample courses and safe, simulated learning activities."
+    help = "Create foundation courses and a four-semester safe cybersecurity curriculum."
 
     def handle(self, *args, **options):
-        for item in COURSES:
-            lessons = item["lessons"]
+        for item in [*FOUNDATION_COURSES, *DIPLOMA_MODULES]:
+            lessons = list(item["lessons"])
+            if item.get("module_code"):
+                lessons.extend(
+                    {
+                        "title": title,
+                        "lesson_type": "article",
+                        "content": content,
+                    }
+                    for title, content in SUPPLEMENTAL_LESSONS[item["module_code"]]
+                )
             course_defaults = {key: value for key, value in item.items() if key != "lessons"}
             course, _ = Course.objects.update_or_create(
                 slug=item["slug"], defaults=course_defaults
             )
             for order, lesson_data in enumerate(lessons, start=1):
-                title, lesson_type, content, challenge_prompt, expected_answer, video_url = lesson_data
-                Lesson.objects.update_or_create(
-                    course=course,
-                    title=title,
-                    defaults={
-                        "order": order,
+                if isinstance(lesson_data, dict):
+                    lesson_fields = lesson_data
+                    title = lesson_data["title"]
+                else:
+                    (
+                        title,
+                        lesson_type,
+                        content,
+                        challenge_prompt,
+                        expected_answer,
+                        video_url,
+                    ) = lesson_data
+                    lesson_fields = {
                         "lesson_type": lesson_type,
                         "content": content,
                         "challenge_prompt": challenge_prompt,
                         "expected_answer": expected_answer,
                         "video_url": video_url,
+                    }
+                if item.get("module_code"):
+                    lesson_fields = build_diploma_lesson(item, lesson_fields, order)
+                Lesson.objects.update_or_create(
+                    course=course,
+                    title=title,
+                    defaults={
+                        "order": order,
+                        **lesson_fields,
                     },
                 )
-            self.stdout.write(self.style.SUCCESS(f"Seeded {course.title}"))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"Seeded {item.get('module_code', course.title)} - {course.title}"
+                )
+            )

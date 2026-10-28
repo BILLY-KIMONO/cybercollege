@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Prefetch
+from django.db.models import Count, F, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -15,15 +15,23 @@ def home(request):
 
 
 def catalog(request):
-    courses = Course.objects.filter(published=True).annotate(lesson_count=Count("lessons"))
+    courses = Course.objects.filter(published=True).annotate(
+        lesson_count=Count("lessons")
+    )
     query = request.GET.get("q", "").strip()
     category = request.GET.get("category", "").strip()
+    semester = request.GET.get("semester", "").strip()
     if query:
-        courses = courses.filter(title__icontains=query) | courses.filter(
-            summary__icontains=query
+        courses = courses.filter(
+            Q(title__icontains=query)
+            | Q(summary__icontains=query)
+            | Q(module_code__icontains=query)
         )
     if category:
         courses = courses.filter(category=category)
+    if semester in {str(value) for value, _ in Course.SEMESTER_CHOICES}:
+        courses = courses.filter(semester=int(semester))
+    courses = courses.order_by(F("semester").asc(nulls_last=True), "module_code", "title")
     categories = (
         Course.objects.filter(published=True)
         .order_by("category")
@@ -33,7 +41,17 @@ def catalog(request):
     return render(
         request,
         "learning/catalog.html",
-        {"courses": courses.distinct(), "categories": categories, "query": query, "selected_category": category},
+        {
+            "courses": courses.distinct(),
+            "categories": categories,
+            "semester_choices": Course.SEMESTER_CHOICES,
+            "diploma_module_count": Course.objects.filter(
+                published=True, semester__isnull=False
+            ).count(),
+            "query": query,
+            "selected_category": category,
+            "selected_semester": semester,
+        },
     )
 
 
