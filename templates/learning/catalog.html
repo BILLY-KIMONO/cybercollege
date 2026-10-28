@@ -1,0 +1,18 @@
+{% extends "learning/base.html" %}
+{% block title %}Explore courses · KSCD{% endblock %}
+{% block content %}
+<section class="page-hero"><div class="section-kicker">LEARN AT YOUR OWN PACE</div><h1>Find your <span>next skill.</span></h1><p>Practical learning paths for the people building a safer digital Kenya.</p></section>
+<section class="catalog-section">
+  <form class="catalog-filters" method="get">
+    <label class="search-box"><span aria-hidden="true">⌕</span><input type="search" name="q" value="{{ query }}" placeholder="Search courses" aria-label="Search courses"></label>
+    <label class="select-label"><span class="sr-only">Filter by topic</span><select name="category" onchange="this.form.submit()"><option value="">All topics</option>{% for category in categories %}<option value="{{ category }}" {% if category == selected_category %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></label>
+    {% if query or selected_category %}<a class="clear-filters" href="{% url 'catalog' %}">Clear filters</a>{% endif %}
+  </form>
+  <div class="catalog-count">{{ courses|length }} learning path{{ courses|length|pluralize }}</div>
+  <div class="course-grid catalog-grid">
+    {% for course in courses %}
+      <a class="course-card" href="{{ course.get_absolute_url }}"><div class="card-top"><span class="course-icon">{{ course.icon }}</span><span class="arrow-circle">↗</span></div><div class="card-category">{{ course.category }}</div><h3>{{ course.title }}</h3><p>{{ course.summary }}</p><div class="card-meta"><span>{{ course.level }}</span><span>{{ course.duration }}</span></div></a>
+    {% empty %}<div class="empty-state"><h3>No paths found just yet.</h3><p>Try a different search or clear your filters.</p></div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

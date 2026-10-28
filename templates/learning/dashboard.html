@@ -1,0 +1,18 @@
+{% extends "learning/base.html" %}
+{% block title %}My learning · KSCD{% endblock %}
+{% block content %}
+<section class="dashboard-wrap">
+  <div class="dashboard-welcome"><div><div class="section-kicker">YOUR LEARNING SPACE</div><h1>Good to have you here, <span>{{ user.first_name|default:user.username }}.</span></h1><p>Every lesson is a step toward a safer digital world.</p></div><div class="welcome-mark">✳</div></div>
+  <div class="dashboard-stats"><div><span>LESSONS COMPLETED</span><strong>{{ completed_total|stringformat:"02d" }}</strong></div><div><span>ACTIVE LEARNING PATHS</span><strong>{{ enrollment_cards|length|stringformat:"02d" }}</strong></div><div><span>BADGES EARNED</span><strong>{{ badges|length|stringformat:"02d" }}</strong></div></div>
+  <div class="dashboard-grid">
+    <section class="dashboard-main"><div class="section-heading"><div><div class="section-kicker">KEEP YOUR MOMENTUM</div><h2>Your learning paths</h2></div><a class="text-link" href="{% url 'catalog' %}">Explore more <span aria-hidden="true">↗</span></a></div>
+      {% for item in enrollment_cards %}
+      <article class="enrolled-card"><div class="enrolled-icon">{{ item.course.icon }}</div><div class="enrolled-info"><div class="card-category">{{ item.course.category }}</div><h3><a href="{{ item.course.get_absolute_url }}">{{ item.course.title }}</a></h3><div class="progress-label"><span>{{ item.completed }} of {{ item.total }} lessons</span><strong>{{ item.percent }}%</strong></div><div class="progress-track"><span style="width: {{ item.percent }}%"></span></div></div><a class="arrow-circle" href="{{ item.course.get_absolute_url }}" aria-label="Continue {{ item.course.title }}">↗</a></article>
+      {% empty %}<div class="empty-state dashboard-empty"><span class="empty-icon">◈</span><h3>Your first learning path is waiting.</h3><p>Explore the catalog and enroll in a course to get started.</p><a class="button button-primary" href="{% url 'catalog' %}">Browse courses <span aria-hidden="true">↗</span></a></div>{% endfor %}
+    </section>
+    <aside class="badge-panel"><div class="section-kicker">LITTLE WINS, BIG IMPACT</div><h2>Your badges</h2><p class="muted-copy">Earn badges as you learn, practice, and grow.</p>
+      {% for badge in badges %}<div class="badge-item"><span class="badge-icon">{{ badge.icon }}</span><span><strong>{{ badge.name }}</strong><small>{{ badge.description }}</small></span><span class="badge-check">✓</span></div>{% empty %}<div class="badge-locked"><span>✳</span><strong>Your first badge is close.</strong><small>Complete a lesson to earn “First steps”.</small></div>{% endfor %}
+    </aside>
+  </div>
+</section>
+{% endblock %}

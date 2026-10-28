@@ -1,0 +1,46 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07130f">
+  <title>{% block title %}Kenya School of Cyber Defense{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'learning/styles.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="{% url 'home' %}" aria-label="Kenya School of Cyber Defense home">
+      <span class="brand-mark">K<span>·</span></span>
+      <span class="brand-name">KSCD<small>KENYA SCHOOL OF CYBER DEFENSE</small></span>
+    </a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a href="{% url 'catalog' %}">Explore courses</a>
+      {% if user.is_authenticated %}<a href="{% url 'dashboard' %}">My learning</a>{% endif %}
+    </nav>
+    <div class="header-actions">
+      {% if user.is_authenticated %}
+        <a class="avatar-link" href="{% url 'dashboard' %}"><span class="avatar">{{ user.username|first|upper }}</span><span class="user-label">{{ user.username }}</span></a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="button button-quiet button-small" type="submit">Sign out</button></form>
+      {% else %}
+        <a class="login-link" href="{% url 'login' %}">Log in</a>
+        <a class="button button-primary button-small" href="{% url 'register' %}">Get started <span aria-hidden="true">↗</span></a>
+      {% endif %}
+    </div>
+  </header>
+  {% if messages %}
+    <div class="message-stack" aria-live="polite">
+      {% for message in messages %}<div class="message message-{{ message.tags }}">{{ message }}</div>{% endfor %}
+    </div>
+  {% endif %}
+  <main>{% block content %}{% endblock %}</main>
+  <footer class="site-footer">
+    <a class="brand footer-brand" href="{% url 'home' %}"><span class="brand-mark">K<span>·</span></span><span class="brand-name">KSCD<small>LEARN. DEFEND. GROW.</small></span></a>
+    <span>Building a safer digital Kenya, one learner at a time.</span>
+    <span class="footer-location">NAIROBI, KENYA <span>✳</span></span>
+  </footer>
+</body>
+</html>

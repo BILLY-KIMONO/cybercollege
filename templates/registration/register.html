@@ -1,0 +1,5 @@
+{% extends "learning/base.html" %}
+{% block title %}Join KSCD · Kenya School of Cyber Defense{% endblock %}
+{% block content %}
+<section class="auth-wrap"><div class="auth-decoration"><div class="auth-orbit">✳</div><div class="section-kicker">A SAFER DIGITAL FUTURE</div><h2>Make room for<br><span>what’s next.</span></h2><p>Learn practical skills, practice in safe simulations, and grow at your own pace.</p></div><div class="auth-card"><div class="section-kicker">JOIN THE COMMUNITY</div><h1>Start your journey.</h1><p class="muted-copy">Create your free learner account.</p><form method="post" class="auth-form">{% csrf_token %}{% for field in form %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small class="field-help">{{ field.help_text|safe }}</small>{% endif %}{{ field.errors }}{% endfor %}<button class="button button-primary auth-submit" type="submit">Create account <span aria-hidden="true">↗</span></button></form><p class="auth-switch">Already learning with us? <a href="{% url 'login' %}">Log in</a></p></div></section>
+{% endblock %}

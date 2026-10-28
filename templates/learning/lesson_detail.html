@@ -1,0 +1,14 @@
+{% extends "learning/base.html" %}
+{% block title %}{{ lesson.title }} · {{ course.title }} · KSCD{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="{% url 'catalog' %}">Courses</a><span>/</span><a href="{{ course.get_absolute_url }}">{{ course.title }}</a><span>/</span><span>{{ lesson.title }}</span></div>
+<section class="lesson-page"><aside class="lesson-sidebar"><div class="section-kicker">YOUR LEARNING PATH</div><h3>{{ course.title }}</h3>{% for item in course.lessons.all %}<a class="sidebar-lesson {% if item.id == lesson.id %}active{% endif %}" href="{% url 'lesson_detail' course.slug item.id %}"><span>{% if item.id == lesson.id %}→{% else %}{{ forloop.counter|stringformat:"02d" }}{% endif %}</span>{{ item.title }}</a>{% endfor %}<a class="back-course" href="{{ course.get_absolute_url }}">← Back to course overview</a></aside>
+  <article class="lesson-content"><div class="lesson-heading"><div class="section-kicker">{{ lesson.get_lesson_type_display|upper }} · {{ lesson.duration|upper }}</div><h1>{{ lesson.title }}</h1></div><div class="lesson-prose">{{ lesson.content|linebreaks }}</div>
+    {% if lesson.lesson_type == "lab" %}
+      <div class="simulation-panel"><div class="simulation-label"><span class="live-dot"></span> SAFE SIMULATION <span class="simulation-tag">NO LIVE SYSTEMS</span></div><h2>Put your judgment to work.</h2><p>{{ lesson.challenge_prompt }}</p><form method="post" action="{% url 'complete_lesson' course.slug lesson.id %}">{% csrf_token %}{{ answer_form.answer.errors }}<label class="sr-only" for="{{ answer_form.answer.id_for_label }}">Your answer</label><div class="answer-row">{{ answer_form.answer }}<button class="button button-primary" type="submit">Check answer <span aria-hidden="true">↗</span></button></div><small>This learning activity is a fixed scenario. It does not run commands or interact with real systems.</small></form></div>
+    {% elif lesson.video_url %}<a class="button button-outline video-link" href="{{ lesson.video_url }}" target="_blank" rel="noopener noreferrer">Watch lesson video <span aria-hidden="true">↗</span></a>{% endif %}
+    {% if completed %}<div class="completion-banner"><span>✓</span><div><strong>Lesson complete.</strong><small>Nice work. Keep your momentum going.</small></div></div>{% elif lesson.lesson_type != "lab" %}<form method="post" action="{% url 'complete_lesson' course.slug lesson.id %}">{% csrf_token %}<button class="button button-primary" type="submit">Mark lesson complete <span aria-hidden="true">✓</span></button></form>{% endif %}
+    <div class="lesson-bottom"><a class="text-link" href="{{ course.get_absolute_url }}">← Course overview</a><a class="text-link" href="{% url 'dashboard' %}">My learning space ↗</a></div>
+  </article>
+</section>
+{% endblock %}
