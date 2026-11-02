@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'learning/styles.css' %}">
+  <link rel="stylesheet" href="{% static 'learning/rooms.css' %}">
 </head>
 <body>
   <header class="site-header">
@@ -18,7 +19,7 @@
       <span class="brand-name">KSCD<small>KENYA SCHOOL OF CYBER DEFENSE</small></span>
     </a>
     <nav class="main-nav" aria-label="Main navigation">
-      <a href="{% url 'catalog' %}">Explore courses</a>
+      <a href="{% url 'catalog' %}">Learning paths</a>
       {% if user.is_authenticated %}<a href="{% url 'dashboard' %}">My learning</a>{% endif %}
     </nav>
     <div class="header-actions">

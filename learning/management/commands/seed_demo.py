@@ -3,6 +3,11 @@ from django.core.management.base import BaseCommand
 from learning.curriculum import DIPLOMA_MODULES, build_diploma_lesson
 from learning.curriculum_extensions import SUPPLEMENTAL_LESSONS
 from learning.models import Course, Lesson
+from learning.professional_tracks import (
+    PROFESSIONAL_TRACKS,
+    build_professional_track,
+)
+from learning.short_courses import SPECIALIST_COURSES, build_specialist_course
 
 
 FOUNDATION_COURSES = [
@@ -77,7 +82,18 @@ class Command(BaseCommand):
     help = "Create foundation courses and a four-semester safe cybersecurity curriculum."
 
     def handle(self, *args, **options):
-        for item in [*FOUNDATION_COURSES, *DIPLOMA_MODULES]:
+        specialist_courses = [
+            build_specialist_course(course) for course in SPECIALIST_COURSES
+        ]
+        professional_tracks = [
+            build_professional_track(track) for track in PROFESSIONAL_TRACKS
+        ]
+        for item in [
+            *FOUNDATION_COURSES,
+            *DIPLOMA_MODULES,
+            *specialist_courses,
+            *professional_tracks,
+        ]:
             lessons = list(item["lessons"])
             if item.get("module_code"):
                 lessons.extend(

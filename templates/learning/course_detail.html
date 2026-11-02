@@ -1,7 +1,56 @@
 {% extends "learning/base.html" %}
 {% block title %}{{ course.title }} · KSCD{% endblock %}
 {% block content %}
-<div class="breadcrumb"><a href="{% url 'catalog' %}">Courses</a><span>/</span><span>{{ course.category }}</span></div>
-<section class="course-intro"><div class="course-intro-copy"><div class="section-kicker">{% if course.module_code %}{{ course.get_semester_display|upper }} · {{ course.module_code }} · {% endif %}{{ course.category|upper }}</div><h1>{{ course.title }}</h1><p class="course-summary">{{ course.description }}</p><div class="course-meta"><span>{{ course.level }}</span><span>{{ course.duration }}</span><span>{{ course.lessons.count }} lessons</span></div>{% if enrolled and first_lesson %}<a class="button button-primary" href="{% url 'lesson_detail' course.slug first_lesson.id %}">Continue learning <span aria-hidden="true">↗</span></a>{% elif enrolled %}<a class="button button-outline" href="#lessons">Lessons coming soon</a>{% else %}<form method="post" action="{% url 'enroll' course.slug %}">{% csrf_token %}<button class="button button-primary" type="submit">Enroll for free <span aria-hidden="true">↗</span></button></form>{% endif %}</div><div class="course-emblem">{{ course.icon }}<span>KSCD LEARNING PATH</span></div></section>
-<section class="lesson-list-section" id="lessons"><div class="section-heading"><div><div class="section-kicker">YOUR LEARNING PATH</div><h2>What you’ll learn</h2></div><span class="muted-copy">{{ course.lessons.count }} guided lessons{% if course.semester %} · 40 hours total{% endif %}</span></div><div class="lesson-list">{% for lesson in course.lessons.all %}<div class="lesson-row"><span class="lesson-number">{% if lesson.id in completed_ids %}<span class="complete-check">✓</span>{% else %}{{ forloop.counter|stringformat:"02d" }}{% endif %}</span><span class="lesson-kind kind-{{ lesson.lesson_type }}">{{ lesson.get_lesson_type_display }}</span><div class="lesson-title"><strong>{{ lesson.title }}</strong><small>{{ lesson.duration }}</small></div>{% if enrolled %}<a class="arrow-circle" href="{% url 'lesson_detail' course.slug lesson.id %}" aria-label="Open {{ lesson.title }}">↗</a>{% else %}<span class="lesson-lock" aria-label="Enroll to unlock">⌑</span>{% endif %}</div>{% empty %}<div class="empty-state"><h3>Lessons are on their way.</h3><p>This path is being prepared by our learning team.</p></div>{% endfor %}</div></section>
+<div class="breadcrumb"><a href="{% url 'catalog' %}">Learning paths</a><span>/</span><span>{{ course.category }}</span></div>
+<section class="path-hero">
+  <div class="path-hero-copy">
+    <div class="section-kicker">{% if course.module_code %}{{ course.get_semester_display|upper }} · {{ course.module_code }} · {% endif %}{{ course.category|upper }}</div>
+    <div class="path-label"><span class="live-dot"></span> GUIDED LEARNING PATH</div>
+    <h1>{{ course.title }}</h1>
+    <p class="course-summary">{{ course.description }}</p>
+    <div class="course-meta"><span>{{ course.level }}</span><span>{{ course.duration }}</span><span>{{ lesson_count }} rooms</span></div>
+    {% if enrolled and first_lesson %}
+      <a class="button button-primary" href="{% url 'lesson_detail' course.slug first_lesson.id %}">{% if completed_count %}Continue path{% else %}Start this path{% endif %}<span aria-hidden="true">↗</span></a>
+    {% elif enrolled %}
+      <span class="path-complete-label">PATH COMPLETE · Review any room below</span>
+    {% else %}
+      <form method="post" action="{% url 'enroll' course.slug %}">{% csrf_token %}<button class="button button-primary" type="submit">Join this path <span aria-hidden="true">↗</span></button></form>
+    {% endif %}
+  </div>
+  <aside class="path-progress-card">
+    <div class="path-progress-icon">{{ course.icon }}</div>
+    <span class="section-kicker">{% if enrolled %}YOUR PROGRESS{% else %}PATH OVERVIEW{% endif %}</span>
+    <strong class="path-progress-number">{% if enrolled %}{{ progress_percent }}%{% else %}{{ lesson_count }}{% endif %}</strong>
+    <span class="muted-copy">{% if enrolled %}{{ completed_count }} of {{ lesson_count }} rooms completed{% else %}Original guided rooms in this path{% endif %}</span>
+    <div class="progress-track"><span style="width: {% if enrolled %}{{ progress_percent }}{% else %}0{% endif %}%"></span></div>
+    <small>Learn at your pace. Your progress is saved to your account.</small>
+  </aside>
+</section>
+
+<section class="room-map-section" id="rooms">
+  <div class="section-heading">
+    <div><div class="section-kicker">YOUR ROUTE</div><h2>Path rooms</h2></div>
+    <span class="muted-copy">Learn · Practice · Complete</span>
+  </div>
+  <div class="room-map">
+    {% for lesson in course.lessons.all %}
+      <article class="room-card {% if lesson.id in completed_ids %}room-card-complete{% endif %}">
+        <div class="room-card-number">{% if lesson.id in completed_ids %}✓{% else %}{{ forloop.counter|stringformat:"02d" }}{% endif %}</div>
+        <div class="room-card-content">
+          <div class="room-card-meta"><span>ROOM {{ forloop.counter|stringformat:"02d" }}</span><span class="lesson-kind kind-{{ lesson.lesson_type }}">{{ lesson.get_lesson_type_display }}</span><span>{{ lesson.duration }}</span></div>
+          <h3>{{ lesson.title }}</h3>
+          <p>{% if lesson.lesson_type == "lab" %}Apply your judgment to a fixed, safe scenario. No live systems are involved.{% else %}Study the lesson, work through its guided practice, and check your understanding.{% endif %}</p>
+        </div>
+        {% if enrolled %}
+          <a class="button button-outline room-open-button" href="{% url 'lesson_detail' course.slug lesson.id %}">{% if lesson.id in completed_ids %}Review room{% else %}Open room{% endif %}<span aria-hidden="true">↗</span></a>
+        {% else %}
+          <span class="room-locked" aria-label="Join path to open room">JOIN PATH TO UNLOCK</span>
+        {% endif %}
+      </article>
+    {% empty %}
+      <div class="empty-state"><h3>Rooms are being prepared.</h3><p>This path does not have any lessons yet.</p></div>
+    {% endfor %}
+  </div>
+  <div class="path-safety-note"><span>✳</span><p><strong>Practice responsibly.</strong> Learning activities use original material and fixed scenarios. Only work on systems when you have explicit written authorization and a clearly defined scope.</p></div>
+</section>
 {% endblock %}

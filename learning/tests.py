@@ -6,6 +6,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .models import Course, Enrollment, Lesson, LessonProgress
+from .professional_tracks import PROFESSIONAL_TRACKS
 
 
 class LearningFlowTests(TestCase):
@@ -64,6 +65,30 @@ class LearningFlowTests(TestCase):
         dashboard = self.client.get(reverse("dashboard"))
         self.assertContains(dashboard, self.course.title)
 
+    def test_room_flow_shows_progress_navigation_and_resume_target(self):
+        self.client.force_login(self.user)
+        Enrollment.objects.create(user=self.user, course=self.course)
+
+        course_page = self.client.get(self.course.get_absolute_url())
+        self.assertContains(course_page, "ROOM 01")
+        self.assertContains(course_page, "ROOM 02")
+        self.assertContains(course_page, "Start this path")
+
+        lesson_url = reverse("lesson_detail", args=[self.course.slug, self.article.id])
+        lesson_page = self.client.get(lesson_url)
+        self.assertContains(lesson_page, "ROOM 01")
+        self.assertContains(lesson_page, "Next room")
+
+        self.client.post(
+            reverse("complete_lesson", args=[self.course.slug, self.article.id])
+        )
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertContains(dashboard, "Next up: Respond to an alert")
+        self.assertContains(
+            dashboard,
+            reverse("lesson_detail", args=[self.course.slug, self.lab.id]),
+        )
+
     def test_lesson_completion_requires_enrollment(self):
         self.client.force_login(self.user)
         response = self.client.post(
@@ -107,7 +132,7 @@ class LearningFlowTests(TestCase):
         Enrollment.objects.create(user=self.user, course=empty_course)
         response = self.client.get(empty_course.get_absolute_url())
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Lessons coming soon")
+        self.assertContains(response, "Rooms are being prepared")
 
 
 class DiplomaCurriculumTests(TestCase):
@@ -147,22 +172,51 @@ class DiplomaCurriculumTests(TestCase):
             for lesson in lessons:
                 self.assertGreaterEqual(
                     len(lesson.content.split()),
-                    250,
+                    450,
                     f"{module.module_code}: {lesson.title}",
                 )
                 self.assertEqual(lesson.duration, "5 hours", module.module_code)
                 for section in (
                     "LEARNING OUTCOMES",
                     "CORE LESSON NOTES",
+                    "DETAILED TEACHING NOTES",
                     "GUIDED PRACTICE",
                     "INDEPENDENT STUDY",
                     "KNOWLEDGE CHECK",
+                    "MODEL ANSWER GUIDE",
                     "ASSESSMENT AND REVIEW",
+                    "SUBMISSION CHECKLIST",
                     "Total: 300 minutes (5 hours).",
                 ):
                     self.assertIn(
                         section, lesson.content, f"{module.module_code}: {lesson.title}"
                     )
+
+    def test_threat_intelligence_lesson_teaches_its_core_lifecycle_and_analysis(self):
+        call_command("seed_demo", stdout=StringIO())
+        lessons = Lesson.objects.filter(course__module_code="CYB-401")
+        lifecycle = lessons.get(title="Threat intelligence and confidence")
+        sources = lessons.get(title="Malware defense and safe handling")
+        dissemination = lessons.get(title="Sharing, privacy, and actionable reporting")
+
+        for concept in (
+            "collection",
+            "analysis",
+            "disseminate",
+            "Strategic intelligence",
+            "Operational intelligence",
+            "Tactical intelligence",
+            "indicator is a clue",
+            "source reliability",
+            "information credibility",
+            "alternative explanations",
+        ):
+            self.assertIn(concept.casefold(), lifecycle.content.casefold())
+        self.assertIn("approved reporting route", sources.content)
+        self.assertIn("isolated environment", sources.content)
+        self.assertIn("indicator alone does not establish", sources.content)
+        self.assertIn("STIX", dissemination.content)
+        self.assertIn("TAXII", dissemination.content)
 
     def test_catalog_lists_and_filters_diploma_modules(self):
         call_command("seed_demo", stdout=StringIO())
@@ -194,6 +248,129 @@ class DiplomaCurriculumTests(TestCase):
         self.assertContains(response, "CYB-402")
         self.assertContains(response, "SEMESTER 4")
         self.assertContains(response, "Rules of engagement and safety")
-        self.assertContains(response, "8 guided lessons")
+        self.assertContains(response, "8 rooms")
         self.assertContains(response, "5 hours")
         self.assertEqual(len(response.context["course"].lessons.all()), 8)
+
+
+class SpecialistCourseTests(TestCase):
+    def test_seed_demo_creates_complete_specialist_courses(self):
+        call_command("seed_demo", stdout=StringIO())
+        call_command("seed_demo", stdout=StringIO())
+
+        courses = Course.objects.filter(
+            slug__in=[
+                "practical-phishing-email-security",
+                "secure-coding-essentials",
+                "cloud-security-fundamentals",
+            ]
+        )
+        self.assertEqual(courses.count(), 3)
+        self.assertEqual(
+            Lesson.objects.filter(course__in=courses).count(), 12
+        )
+
+        for course in courses:
+            lessons = course.lessons.all()
+            self.assertEqual(lessons.count(), 4, course.slug)
+            self.assertEqual(course.duration, "4 hours", course.slug)
+            self.assertIsNone(course.semester)
+            self.assertEqual(
+                lessons.filter(lesson_type=Lesson.LAB).count(), 1, course.slug
+            )
+            for lesson in lessons:
+                self.assertEqual(lesson.duration, "1 hour", lesson.title)
+                self.assertGreaterEqual(
+                    len(lesson.content.split()), 150, lesson.title
+                )
+                for section in (
+                    "LEARNING OUTCOMES",
+                    "CORE LESSON NOTES",
+                    "GUIDED PRACTICE",
+                    "INDEPENDENT PRACTICE",
+                    "KNOWLEDGE CHECK",
+                    "ASSESSMENT AND REVIEW",
+                    "Total: 60 minutes (1 hour).",
+                ):
+                    self.assertIn(section, lesson.content, lesson.title)
+
+            lab = lessons.get(lesson_type=Lesson.LAB)
+            self.assertTrue(lab.challenge_prompt, course.slug)
+            self.assertTrue(lab.expected_answer, course.slug)
+            self.assertNotIn(lab.expected_answer, lab.content, course.slug)
+
+    def test_specialist_courses_are_searchable_in_catalog(self):
+        call_command("seed_demo", stdout=StringIO())
+
+        response = self.client.get(reverse("catalog"), {"q": "cloud security"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cloud Security Fundamentals")
+        self.assertNotContains(response, "Secure Coding Essentials")
+
+
+class ProfessionalTrackTests(TestCase):
+    def test_seed_demo_creates_complete_offensive_and_defensive_tracks(self):
+        call_command("seed_demo", stdout=StringIO())
+        call_command("seed_demo", stdout=StringIO())
+
+        tracks = Course.objects.filter(
+            slug__in=[
+                "authorized-offensive-security-assessment",
+                "defensive-security-operations-incident-response",
+            ]
+        )
+        self.assertEqual(tracks.count(), 2)
+
+        for track in tracks:
+            lessons = track.lessons.all()
+            self.assertEqual(track.duration, "40 hours", track.slug)
+            self.assertEqual(lessons.count(), 8, track.slug)
+            self.assertEqual(
+                sum(int(lesson.duration.split()[0]) for lesson in lessons),
+                40,
+                track.slug,
+            )
+            self.assertEqual(
+                lessons.filter(lesson_type=Lesson.LAB).count(), 1, track.slug
+            )
+            for lesson in lessons:
+                self.assertEqual(lesson.duration, "5 hours", lesson.title)
+                self.assertGreaterEqual(
+                    len(lesson.content.split()), 250, lesson.title
+                )
+                for section in (
+                    "LEARNING OUTCOMES",
+                    "CORE LESSON NOTES",
+                    "GUIDED PRACTICE",
+                    "INDEPENDENT STUDY",
+                    "KNOWLEDGE CHECK",
+                    "ASSESSMENT AND REVIEW",
+                    "Total: 300 minutes (5 hours).",
+                ):
+                    self.assertIn(section, lesson.content, lesson.title)
+
+            lab = lessons.get(lesson_type=Lesson.LAB)
+            self.assertTrue(lab.challenge_prompt, track.slug)
+            self.assertTrue(lab.expected_answer, track.slug)
+            self.assertLessEqual(len(lab.expected_answer), 160, track.slug)
+            self.assertNotIn(lab.expected_answer, lab.content, track.slug)
+
+        seeded_track_slugs = set(tracks.values_list("slug", flat=True))
+        self.assertEqual(
+            seeded_track_slugs,
+            {track["slug"] for track in PROFESSIONAL_TRACKS},
+        )
+
+    def test_catalog_explains_both_professional_specializations(self):
+        call_command("seed_demo", stdout=StringIO())
+
+        response = self.client.get(reverse("catalog"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "advanced defensive operations")
+        self.assertContains(response, "authorized offensive assessment")
+        self.assertContains(response, "Authorized Offensive Security Assessment")
+        self.assertContains(
+            response, "Defensive Security Operations and Incident Response"
+        )

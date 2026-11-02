@@ -1,3 +1,6 @@
+from .curriculum_depth import build_lesson_teaching_notes
+
+
 def article(title, content):
     return {
         "title": title,
@@ -457,6 +460,7 @@ DIPLOMA_MODULES = [
 def build_diploma_lesson(module, lesson, order):
     title = lesson["title"]
     content = lesson["content"]
+    teaching_notes = build_lesson_teaching_notes(module, lesson, order)
     practical_activity = lesson.get("practical_activity", "")
     challenge_prompt = lesson.get("challenge_prompt", "")
     assessment_prompt = challenge_prompt or (
@@ -479,13 +483,17 @@ def build_diploma_lesson(module, lesson, order):
             "identify which facts still need confirmation, and communicate a proportionate "
             "recommendation to its accountable owner.",
             f"CORE LESSON NOTES\n{content}",
+            f"DETAILED TEACHING NOTES\n{teaching_notes}",
             f"WORKED EXAMPLE\nConsider a fictional organization reviewing {title.casefold()}. "
             f"The team first identifies the relevant assets and owners, then compares the "
             f"available evidence with its stated objective. Use this example to explain how "
             f"{title.casefold()} affects a real business decision; do not assume that one "
             "unfamiliar event proves wrongdoing or that a technical safeguard eliminates risk.",
             "GUIDED PRACTICE · 90 MINUTES\n"
-            + "\n".join(f"{step}. {instruction}" for step, instruction in enumerate(activity_steps, 1)),
+            "Use this sequence to complete the case rather than jumping to a conclusion:\n"
+            + "\n".join(f"{step}. {instruction}" for step, instruction in enumerate(activity_steps, 1))
+            + "\nBefore submitting, check that your recommendation follows the "
+            "documented scope, cites a source, and identifies who owns the next decision.",
             "INDEPENDENT STUDY · 60 MINUTES\nUse the course notes and any instructor-approved "
             "references to prepare a one-page study record. Define three important terms, "
             "summarize the decision or process involved, cite the source of each factual "
@@ -495,13 +503,23 @@ def build_diploma_lesson(module, lesson, order):
             f"1. Explain the central concept in {title.casefold()} in your own words.\n"
             "2. Which fact would most change your recommendation, and how would you verify it "
             "through an approved source?\n"
-            "3. Who should own the next decision, and what is one limitation you would report?",
+            "3. Who should own the next decision, and what is one limitation you would report?\n"
+            "MODEL ANSWER GUIDE\nA complete response defines the concept accurately, "
+            "uses a specific fact from the case, identifies an approved source or "
+            "owner for missing information, explains why the proposed action is "
+            "proportionate, and states one limitation. Answers that assume intent, "
+            "authorization, or impact without evidence should be revised.",
             "ASSESSMENT AND REVIEW\n"
             f"Assessment question: {assessment_prompt}\n"
             "Review your answer against four criteria: accurate use of lesson concepts; "
             "a traceable reason and evidence source; appropriate authorization, privacy, "
             "and safety; and a clear next step with a responsible owner. Correct any "
-            "unsupported conclusion before adding the work to your learning portfolio.",
+            "unsupported conclusion before adding the work to your learning portfolio.\n"
+            "SUBMISSION CHECKLIST\nInclude the learning objective, a short glossary "
+            "of key terms, your evidence and its source, confirmed facts versus "
+            "assumptions, the decision and its rationale, one unresolved question, "
+            "the accountable owner, and the safe next step. A reviewer should be "
+            "able to follow your reasoning without needing access to a real system.",
             "FIVE-HOUR TIME ALLOCATION\n"
             "15 minutes: review outcomes and prepare the fictional materials. "
             "45 minutes: read the core notes and write a glossary. "

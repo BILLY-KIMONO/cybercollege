@@ -64,19 +64,28 @@ def dashboard(request):
     )
     enrollment_cards = []
     completed_total = 0
+    completed_lesson_ids = set(
+        LessonProgress.objects.filter(user=request.user).values_list(
+            "lesson_id", flat=True
+        )
+    )
     for enrollment in enrollments:
-        lesson_ids = [lesson.id for lesson in enrollment.course.lessons.all()]
-        completed_count = LessonProgress.objects.filter(
-            user=request.user, lesson_id__in=lesson_ids
-        ).count()
-        lesson_count = len(lesson_ids)
+        lessons = list(enrollment.course.lessons.all())
+        lesson_ids = {lesson.id for lesson in lessons}
+        completed_count = len(lesson_ids & completed_lesson_ids)
+        lesson_count = len(lessons)
         completed_total += completed_count
+        next_lesson = next(
+            (lesson for lesson in lessons if lesson.id not in completed_lesson_ids),
+            lessons[-1] if lessons else None,
+        )
         enrollment_cards.append(
             {
                 "course": enrollment.course,
                 "completed": completed_count,
                 "total": lesson_count,
                 "percent": round(completed_count * 100 / lesson_count) if lesson_count else 0,
+                "next_lesson": next_lesson,
             }
         )
     badges = []
@@ -114,6 +123,13 @@ def course_detail(request, slug):
                 user=request.user, lesson__course=course
             ).values_list("lesson_id", flat=True)
         )
+    lessons = list(course.lessons.all())
+    next_lesson = next(
+        (lesson for lesson in lessons if lesson.id not in completed_ids),
+        lessons[-1] if lessons else None,
+    )
+    completed_count = len(completed_ids)
+    lesson_count = len(lessons)
     return render(
         request,
         "learning/course_detail.html",
@@ -121,7 +137,12 @@ def course_detail(request, slug):
             "course": course,
             "enrolled": enrolled,
             "completed_ids": completed_ids,
-            "first_lesson": course.lessons.first(),
+            "first_lesson": next_lesson,
+            "completed_count": completed_count,
+            "lesson_count": lesson_count,
+            "progress_percent": (
+                round(completed_count * 100 / lesson_count) if lesson_count else 0
+            ),
         },
     )
 
@@ -143,7 +164,7 @@ def lesson_detail(request, slug, lesson_id):
         return redirect("course_detail", slug=course.slug)
     lesson = get_object_or_404(Lesson, course=course, pk=lesson_id)
     completed = LessonProgress.objects.filter(user=request.user, lesson=lesson).exists()
-    answer_form = LabAnswerForm()
+    learning_context = _lesson_navigation_context(request.user, course, lesson)
     return render(
         request,
         "learning/lesson_detail.html",
@@ -151,9 +172,36 @@ def lesson_detail(request, slug, lesson_id):
             "course": course,
             "lesson": lesson,
             "completed": completed,
-            "answer_form": answer_form,
+            **learning_context,
         },
     )
+
+
+def _lesson_navigation_context(user, course, lesson):
+    lessons = list(course.lessons.all())
+    lesson_index = next(
+        (index for index, item in enumerate(lessons) if item.id == lesson.id),
+        0,
+    )
+    completed_ids = set(
+        LessonProgress.objects.filter(user=user, lesson__course=course).values_list(
+            "lesson_id", flat=True
+        )
+    )
+    return {
+        "answer_form": LabAnswerForm(),
+        "path_lessons": lessons,
+        "completed_ids": completed_ids,
+        "room_number": lesson_index + 1,
+        "room_count": len(lessons),
+        "previous_lesson": lessons[lesson_index - 1] if lesson_index else None,
+        "next_lesson": (
+            lessons[lesson_index + 1] if lesson_index + 1 < len(lessons) else None
+        ),
+        "path_progress": (
+            round(len(completed_ids) * 100 / len(lessons)) if lessons else 0
+        ),
+    }
 
 
 @login_required
@@ -167,10 +215,19 @@ def complete_lesson(request, slug, lesson_id):
     if lesson.lesson_type == Lesson.LAB:
         form = LabAnswerForm(request.POST)
         if not form.is_valid():
+            learning_context = _lesson_navigation_context(
+                request.user, course, lesson
+            )
             return render(
                 request,
                 "learning/lesson_detail.html",
-                {"course": course, "lesson": lesson, "completed": False, "answer_form": form},
+                {
+                    "course": course,
+                    "lesson": lesson,
+                    "completed": False,
+                    **learning_context,
+                    "answer_form": form,
+                },
             )
         expected = " ".join(lesson.expected_answer.casefold().split())
         submitted = " ".join(form.cleaned_data["answer"].casefold().split())
